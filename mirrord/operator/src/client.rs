@@ -347,9 +347,9 @@ impl OperatorApi<NoClientCert> {
                 .map_err(KubeApiError::from)
                 .map_err(OperatorApiError::CreateKubeClient)?
                 .with_layer(&BufferLayer::new(1024))
-                .with_layer(&RetryLayer::new(RetryKube::try_from(
-                    &layer_config.startup_retry,
-                )?))
+                .with_layer(&RetryLayer::new(
+                    RetryKube::try_from(&layer_config.startup_retry).map_err(From::from)?,
+                ))
                 .build();
 
             (client, certificate)
@@ -1570,9 +1570,15 @@ impl OperatorApi<PreparedClientCert> {
             #[error(transparent)]
             DecodeError(#[from] bincode::error::DecodeError),
             #[error(transparent)]
-            WsError(#[from] tungstenite::Error),
+            WsError(#[from] Box<tungstenite::Error>),
             #[error("invalid message: {0:?}")]
-            InvalidMessage(tungstenite::Message),
+            InvalidMessage(Box<tungstenite::Message>),
+        }
+
+        impl From<tungstenite::Error> for OperatorClientError {
+            fn from(error: tungstenite::Error) -> Self {
+                Self::WsError(Box::new(error))
+            }
         }
 
         let ws = upgrade::connect_ws(client, request)
@@ -1586,7 +1592,7 @@ impl OperatorApi<PreparedClientCert> {
             })
             .map(|i| match i.map_err(OperatorClientError::from)? {
                 tungstenite::Message::Binary(pl) => Ok(pl),
-                other => Err(OperatorClientError::InvalidMessage(other)),
+                other => Err(OperatorClientError::InvalidMessage(Box::new(other))),
             });
 
         let operator_protocol_version = session.operator_protocol_version.clone();
