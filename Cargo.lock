@@ -5358,6 +5358,7 @@ version = "3.191.0"
 dependencies = [
  "chrono",
  "fancy-regex",
+ "mirrord",
  "tempfile",
  "tokio",
 ]
@@ -5382,7 +5383,6 @@ dependencies = [
  "jsonptr",
  "k8s-openapi",
  "kube",
- "mirrord",
  "mirrord-agent-env",
  "mirrord-kube",
  "mirrord-operator",
